@@ -1,0 +1,45 @@
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+*.venv
+
+# Environment & Secrets
+.env
+backend/.env
+frontend/.env
+*.local
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.next/
+
+# Python cache & build
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.pytest_cache/
+.pytest_cache/
+*.egg-info/
+
+# Logs & temp files
+*.log
+backend/*.log
+*.bak
+*.tmp
+e2e-output.txt
+backend/e2e-output.txt
+
+# Databases & local storage
+*.db
+*.sqlite3
+data_store.json
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,87 @@
+name: FinTech SDLC CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: sqlite:///./ci_test.db
+      JWT_SECRET: ci-only-secret-change-before-deployment-0123456789abcdef
+      LLM_PROVIDER: heuristic
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: python -m pip install --upgrade pip && pip install -r requirements.txt
+      - run: python -m alembic upgrade head
+      - run: python -m compileall -q .
+      - run: python -m pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+
+  browser-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare local-only compose environment
+        run: cp .env.example backend/.env
+      - name: Install browser test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements-dev.txt
+          python -m playwright install --with-deps chromium
+      - name: Start application stack
+        run: docker compose up --build -d
+      - name: Wait for application
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:8080/health >/dev/null; then exit 0; fi
+            sleep 5
+          done
+          docker compose logs
+          exit 1
+      - name: Browser end-to-end smoke test
+        env:
+          E2E_BASE_URL: http://localhost:8080
+        run: python -m pytest backend/tests/e2e -q
+      - name: Stop application stack
+        if: always()
+        run: docker compose down -v
+
+  docker-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example backend/.env
+      - run: docker compose config --quiet

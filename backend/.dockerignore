@@ -1,0 +1,11 @@
+.env
+.venv
+venv
+__pycache__
+.pytest_cache
+*.pyc
+*.db
+data_store.json
+chroma_db
+uploads
+generated_docs
